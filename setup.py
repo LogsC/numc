@@ -9,7 +9,7 @@ def main():
     # TODO: YOUR CODE HERE
     # raise NotImplementedError("You need to complete task 2 to install your module!")
     module1 = Extension("numc",
-                        sources = ['numc.c', 'matrix.c'],
+                        sources = ['src/numc.c', 'src/matrix.c'],
                         include_dirs = ['/usr/include/python3'],
                         extra_compile_args = CFLAGS,
                         extra_link_args = LDFLAGS)
