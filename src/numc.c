@@ -323,7 +323,7 @@ static PyObject *Matrix61c_add(Matrix61c* self, PyObject* args) {
     Matrix61c *mat61c2 = (Matrix61c *) mat2;
     // check for validity of dimensions
     if (self->mat->rows != mat61c2->mat->rows || self->mat->cols != mat61c2->mat->cols) {
-        PyErr_SetString(PyExc_TypeError, "invalid dimensions");
+        PyErr_SetString(PyExc_ValueError, "invalid dimensions");
         return NULL;
     }
     // create / allocate space for matrix
@@ -362,7 +362,7 @@ static PyObject *Matrix61c_sub(Matrix61c* self, PyObject* args) {
     Matrix61c *mat61c2 = (Matrix61c *) mat2;
     // check for validity of dimensions
     if (self->mat->rows != mat61c2->mat->rows || self->mat->cols != mat61c2->mat->cols) {
-        PyErr_SetString(PyExc_TypeError, "invalid dimensions");
+        PyErr_SetString(PyExc_ValueError, "invalid dimensions");
         return NULL;
     }
     // create / allocate space for matrix
@@ -401,7 +401,7 @@ static PyObject *Matrix61c_multiply(Matrix61c* self, PyObject *args) {
     Matrix61c *mat61c2 = (Matrix61c *) mat2;
     // check for validity of dimensions
     if (self->mat->cols != mat61c2->mat->rows) {
-        PyErr_SetString(PyExc_TypeError, "invalid dimensions");
+        PyErr_SetString(PyExc_ValueError, "invalid dimensions");
         return NULL;
     }
     // create / allocate space for matrix
@@ -485,7 +485,7 @@ static PyObject *Matrix61c_pow(Matrix61c *self, PyObject *pow, PyObject *optiona
     }
     // check for validity of dimensions
     if (self->mat->rows != self->mat->cols) {
-        PyErr_SetString(PyExc_TypeError, "invalid dimensions");
+        PyErr_SetString(PyExc_ValueError, "invalid dimensions");
         return NULL;
     }
     // create / allocate space for matrix
