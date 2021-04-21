@@ -520,8 +520,8 @@ static PyNumberMethods Matrix61c_as_number = {
     .nb_subtract = (binaryfunc) &Matrix61c_sub,
     .nb_multiply = (binaryfunc) &Matrix61c_multiply,
     .nb_power = (ternaryfunc) &Matrix61c_pow,
-    .nb_negative = (urnaryfunc) &Matrix61c_neg,
-    .nb_absolute = (urnaryfunc) &Matrix61c_abs,
+    .nb_negative = (unaryfunc) &Matrix61c_neg,
+    .nb_absolute = (unaryfunc) &Matrix61c_abs,
 };
 
 
