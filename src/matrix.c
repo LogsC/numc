@@ -217,7 +217,7 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     // omp
     omp_set_num_threads(16);
     #pragma omp parallel for
-    for (int i = 0; i < total; ++i) {
+    for (int i = 0; i < size; ++i) {
         result->data[i] = m1_data[i] + m2_data[i];
     }
     return 0; // success
