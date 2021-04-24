@@ -340,7 +340,9 @@ static PyObject *Matrix61c_add(Matrix61c* self, PyObject* args) {
     }
     // return result
     Matrix61c *result = (Matrix61c *) Matrix61c_new(&Matrix61cType, NULL, NULL);
+    // place operation result in mat
     result->mat = op_result;
+    // pack tuple of rows and cols into shape
     result->shape = PyTuple_Pack(2, PyLong_FromLong(op_result->rows), PyLong_FromLong(op_result->cols));
     return (PyObject *) result;
 }
@@ -379,7 +381,9 @@ static PyObject *Matrix61c_sub(Matrix61c* self, PyObject* args) {
     }
     // return result
     Matrix61c *result = (Matrix61c *) Matrix61c_new(&Matrix61cType, NULL, NULL);
+    // place operation result in mat
     result->mat = op_result;
+    // pack tuple of rows and cols into shape
     result->shape = PyTuple_Pack(2, PyLong_FromLong(op_result->rows), PyLong_FromLong(op_result->cols));
     return (PyObject *) result;
 }
@@ -418,7 +422,9 @@ static PyObject *Matrix61c_multiply(Matrix61c* self, PyObject *args) {
     }
     // return result
     Matrix61c *result = (Matrix61c *) Matrix61c_new(&Matrix61cType, NULL, NULL);
+    // place operation result in mat
     result->mat = op_result;
+    // pack tuple of rows and cols into shape
     result->shape = PyTuple_Pack(2, PyLong_FromLong(op_result->rows), PyLong_FromLong(op_result->cols));
     return (PyObject *) result;
 }
@@ -442,7 +448,9 @@ static PyObject *Matrix61c_neg(Matrix61c* self) {
     }
     // return result
     Matrix61c *result = (Matrix61c *) Matrix61c_new(&Matrix61cType, NULL, NULL);
+    // place operation result in mat
     result->mat = op_result;
+    // pack tuple of rows and cols into shape
     result->shape = PyTuple_Pack(2, PyLong_FromLong(op_result->rows), PyLong_FromLong(op_result->cols));
     return (PyObject *) result;
 }
@@ -466,7 +474,9 @@ static PyObject *Matrix61c_abs(Matrix61c *self) {
     }
     // return result
     Matrix61c *result = (Matrix61c *) Matrix61c_new(&Matrix61cType, NULL, NULL);
+    // place operation result in mat
     result->mat = op_result;
+    // pack tuple of rows and cols into shape
     result->shape = PyTuple_Pack(2, PyLong_FromLong(op_result->rows), PyLong_FromLong(op_result->cols));
     return (PyObject *) result;
 }
@@ -504,7 +514,9 @@ static PyObject *Matrix61c_pow(Matrix61c *self, PyObject *pow, PyObject *optiona
     }
     // return result
     Matrix61c *result = (Matrix61c *) Matrix61c_new(&Matrix61cType, NULL, NULL);
+    // place operation result in mat
     result->mat = op_result;
+    // pack tuple of rows and cols into shape
     result->shape = PyTuple_Pack(2, PyLong_FromLong(op_result->rows), PyLong_FromLong(op_result->cols));
     return (PyObject *) result;
 }

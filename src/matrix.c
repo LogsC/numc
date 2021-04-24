@@ -209,8 +209,16 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     double *m1_data = mat1->data;
     double *m2_data = mat2->data;
     // multithread / unroll?
+    /*
     for (int i = 0; i < size; i++) {
         r_data[i] = m1_data[i] + m2_data[i];
+    }
+     */
+    // omp
+    omp_set_num_threads(16);
+    #pragma omp parallel for
+    for (int i = 0; i < total; ++i) {
+        result->data[i] = m1_data[i] + m2_data[i];
     }
     return 0; // success
 }
