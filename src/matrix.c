@@ -209,16 +209,11 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     double *m1_data = mat1->data;
     double *m2_data = mat2->data;
     // multithread / unroll?
-    /*
-    for (int i = 0; i < size; i++) {
-        r_data[i] = m1_data[i] + m2_data[i];
-    }
-     */
     // omp
     omp_set_num_threads(16);
     #pragma omp parallel for
-    for (int i = 0; i < size; ++i) {
-        result->data[i] = m1_data[i] + m2_data[i];
+    for (int i = 0; i < size; i++) {
+        r_data[i] = m1_data[i] + m2_data[i];
     }
     return 0; // success
 }
@@ -239,6 +234,9 @@ int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     double *m1_data = mat1->data;
     double *m2_data = mat2->data;
     // multithread / unroll?
+    // omp
+    omp_set_num_threads(16);
+    #pragma omp parallel for
     for (int i = 0; i < size; i++) {
         r_data[i] = m1_data[i] - m2_data[i];
     }
@@ -256,19 +254,26 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     if (result->rows != mat1->rows || result->cols != mat2->cols || mat1->cols != mat2->rows) {
         return 1;
     }
+    // OPT?
     // fill result with 0s
     fill_matrix(result, 0.0);
     // multithread / unroll?
     for (int i = 0; i < result->rows; i++) {
-        for (int j = 0; j < mat1->cols; j++) {
-            for (int k = 0; k < result->cols; k++) {
-                // curr row + col offset += mat1 row * mat2 col
-                // i = result row = mat1 row
-                // j = mat1 col = mat2 row
-                // k = result col = mat2 col
-                result->data[i * result->cols + k] += 
-                    mat1->data[i * mat1->cols + j] * mat2->data[j * mat2->cols + k];
+        for (int j = 0; j < result->cols; j++) {
+            // parse result matrix, use omp to obtain row * col sum
+            double curr_sum = 0.0;
+            #pragma omp parallel reduction(+:curr_sum)
+            {
+                #pragma omp for
+                for (int k = 0; k < mat1->cols; k++) {
+                    // curr sum += mat1[row][k] * mat2[k][col]
+                    // i = result row = mat1 row
+                    // j = result col = mat2 col
+                    // k = mat1 col = mat2 row
+                    curr_sum += get(mat1, i, k) * get(mat2, k, j);
+                }
             }
+            set(result, i, j, curr_sum);
         }
     }
     return 0; // success
