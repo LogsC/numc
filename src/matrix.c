@@ -258,8 +258,8 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     // fill result with 0s
     fill_matrix(result, 0.0);
     // multithread / unroll?
-    for (int i = 0; i < result->rows; i++) {
-        for (int j = 0; j < result->cols; j++) {
+    for (int i = 0; i < result->rows; ++i) {
+        for (int j = 0; j < result->cols; ++j) {
             // parse result matrix, use omp to obtain row * col sum
             double curr_sum = 0.0;
             #pragma omp parallel reduction(+:curr_sum)
