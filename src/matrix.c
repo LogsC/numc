@@ -290,32 +290,52 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
     if (mat->rows != mat->cols || pow < 0) {
         return 1;
     }
-    // fill result as identity matrix (mat^0)
+    // calculate size of result
     int size = result->rows * result->cols;
-    for (int i = 0; i < size; i += 1) {
-        if (i / result->cols == i % result->cols) {
-            result->data[i] = 1.0;
-        } else {
-            result->data[i] = 0.0;
+    // handle pow = 0, 1 cases
+    if (pow == 0) {
+        // fill result as identity matrix (mat^0)
+        for (int i = 0; i < size; i += 1) {
+            if (i / result->cols == i % result->cols) {
+                result->data[i] = 1.0;
+            } else {
+                result->data[i] = 0.0;
+            }
         }
+        return 0;
+    } else if (pow == 1) {
+        // copy mat into result
+        // copy temp data into result data
+        for (int i = 0; i < size; i++) {
+            result->data[i] = mat->data[i];
+        }
+        return 0;
     }
-    // create temp matrix to store values to transfer to result
-    matrix *temp = (matrix *) malloc(sizeof(matrix));
+    // create temp matricies to store values to transfer to result
+    matrix *temp;
+    matrix *temp2;
     // if allocate fail, return error -1
     if (allocate_matrix(&temp, mat->rows, mat->cols) != 0) {
         return -1;
     }
-    // while power > 0, multiply result by mat
-    // optimize?
-    while (pow > 0) {
-        mul_matrix(temp, result, mat);
-        // copy temp data into result data
-        for (int i = 0; i < size; i++) {
-            result->data[i] = temp->data[i];
-        }
-        pow -= 1;
+    if (allocate_matrix(&temp2, mat->rows, mat->cols) != 0) {
+        return -1;
     }
-    deallocate_matrix(temp); // deallocate temp
+    // recurse with mat^2 and pow / 2 until pow == 0 or 1
+    mul_matrix(temp, mat, mat); // temp = mat^2
+    pow_matrix(temp2, temp, pow / 2); // recurse w/ mat^2 and pow/2, store in temp2
+    // handle case of odd pow
+    if (pow % 2 == 1) {
+        mul_matrix(result, temp2, mat); // multiply by mat 1 more time
+    } else {
+        // copy mat into result
+        for (int i = 0; i < size; i++) {
+            result->data[i] = mat->data[i];
+        }
+    }
+    // deallocate temp and temp2
+    deallocate_matrix(temp);
+    deallocate_matrix(temp2);
     return 0; // success
 }
 
