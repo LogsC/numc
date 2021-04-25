@@ -188,6 +188,8 @@ void fill_matrix(matrix *mat, double val) {
     /* TODO: YOUR CODE HERE */
     // multithread / unroll?
     int size = mat->rows * mat->cols;
+    omp_set_num_threads(16);
+    #pragma omp parallel for
     for (int i = 0; i < size; i++) {
         mat->data[i] = val;
     }
@@ -295,7 +297,7 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
     // handle pow = 0, 1 cases
     if (pow == 0) {
         // fill result as identity matrix (mat^0)
-        for (int i = 0; i < size; i += 1) {
+        for (int i = 0; i < size; ++i) {
             if (i / result->cols == i % result->cols) {
                 result->data[i] = 1.0;
             } else {
@@ -306,7 +308,7 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
     } else if (pow == 1) {
         // copy mat into result
         // copy temp data into result data
-        for (int i = 0; i < size; i++) {
+        for (int i = 0; i < size; ++i) {
             result->data[i] = mat->data[i];
         }
         return 0;
