@@ -588,7 +588,7 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
         mul_matrix(result, temp2, mat); // multiply by mat 1 more time
     } else {
         // copy mat into result
-        memcpy(result->data, mat->data, size * sizeof(double));
+        memcpy(result->data, temp2->data, size * sizeof(double));
     }
     // deallocate temp and temp2
     deallocate_matrix(temp);
