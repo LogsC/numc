@@ -267,7 +267,7 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     int size = result->rows;
     // fill result with 0s
     int res_size = rseult->rows * result->cols;
-    result->data = calloc(res_size, sizeof(double);
+    result->data = calloc(res_size, sizeof(double));
     if (!result->data) {
         return -1;
     }
@@ -539,7 +539,7 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
             result->data[i] = 0.0;
         }
     }
-    double **swap;
+    double *swap;
     while (pow > 0) {
         if (pow % 2 == 1) {
             mul_matrix(temp2, result, temp1);
