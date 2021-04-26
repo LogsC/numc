@@ -258,6 +258,7 @@ int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
  */
 int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     // create non-pow matmul
+    return 1;
 }
 
 /*
