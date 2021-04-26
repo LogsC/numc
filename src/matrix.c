@@ -496,13 +496,13 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
 int pow_matrix(matrix *result, matrix *mat, int pow) {
     /* TODO: YOUR CODE HERE */
     // if mat is not square or pow is negative, error 1
+    /*
     if (mat->rows != mat->cols || pow < 0) {
         return 1;
     }
     int size = mat->rows * mat->cols * sizeof(double);
     if (pow == 0) {
-        int result_size = result->rows * result->cols;
-        #pragma omp parallel for if (result_size >= 100000)
+        #pragma omp parallel for if (result->rows >= 10)
         for (int i = 0; i < size; ++i) {
             if (i / result->cols == i % result->cols) {
                 result->data[i] = 1.0;
@@ -523,7 +523,6 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
         return -1;
     }
     memcpy(temp1->data, mat->data, size);
-    int result_size = result->rows * result->cols;
     #pragma omp parallel for if (result->rows >= 10)
     for (int i = 0; i < size; ++i) {
         if (i / result->cols == i % result->cols) {
@@ -551,7 +550,8 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
     deallocate_matrix(temp1);
     deallocate_matrix(temp2);
     return 0; // success
-    /*
+     */
+    
     // calculate size of result
     int size = result->rows * result->cols;
     // handle pow = 0, 1 cases
@@ -599,7 +599,7 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
     deallocate_matrix(temp);
     deallocate_matrix(temp2);
     return 0; // success
-     */
+    
 }
 
 /*
