@@ -592,7 +592,7 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
     } else {
         // copy mat into result
         for (int i = 0; i < size; i++) {
-            result->data[i] = mat->data[i];
+            memcpy(result->data, mat->data, size * sizeof(double));
         }
     }
     // deallocate temp and temp2
