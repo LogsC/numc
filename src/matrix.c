@@ -186,7 +186,7 @@ void set(matrix *mat, int row, int col, double val) {
 void fill_matrix(matrix *mat, double val) {
     /* TODO: YOUR CODE HERE */
     // multithread / unroll?
-    double** data = *(mat->data);
+    double* data = mat->data;
     __m256d vec = _mm256_set1_pd(val);
     int dims = mat->rows * mat-> cols;
     if (dims >= 100000) {
@@ -266,7 +266,7 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     // create separate case for matrix multiplcation under a certain size?
     int size = result->rows;
     // fill result with 0s
-    int res_size = rseult->rows * result->cols;
+    int res_size = result->rows * result->cols;
     result->data = calloc(res_size, sizeof(double));
     if (!result->data) {
         return -1;
