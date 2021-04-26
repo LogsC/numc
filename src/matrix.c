@@ -264,7 +264,7 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     // if matrix multiplication is small, use naive method
     if (result->rows * result->cols <= 100000) {
         // naive implementation of mul_matrix (use transpose?)
-        #pragma omp parallel for if (size >= 16)
+        #pragma omp parallel for
         for (int i = 0; i < result->rows; ++i) {
             for (int j = 0; j < result->cols; ++j) {
                 double curr_sum = 0.0;
@@ -276,45 +276,45 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
                 set(result, i, j, curr_sum);
             }
         }
-        return 0;
-    }
-    // allocate the transpose data
-    double *transpose  = malloc(mat2->rows * mat2->cols * sizeof(double));
-    if (transpose == NULL) {
-        return -1;
-    }
-    // set up the transpose matrix
-    #pragma omp parallel for if (mat2->rows * mat2->cols >= 100000)
-    for (int i = 0; i < mat2->rows * mat2->cols; i++) {
-        transpose[i] = mat2->data[(i % mat2->rows) * mat2->cols + i / mat2->rows];
-    }
-    #pragma omp parallel for if (result->rows * result->cols >= 100000)
-    for (int index = 0; index < result->rows * result->cols; index++) {
-        double total = 0;
-         __m256d sums = _mm256_set1_pd(0);
-        int offsetMat1 = (index / result->cols) * mat1->cols; 
-        int offsetTran = (index % result->cols) * mat1->cols;
-        for (int i = 0 ; i < mat1->cols / 16 * 16; i = i + 16){ 
-            sums = _mm256_fmadd_pd( _mm256_loadu_pd (mat1->data + offsetMat1 + i),
-                                    _mm256_loadu_pd (transpose + offsetTran + i),  
-                                    sums);
-            sums = _mm256_fmadd_pd( _mm256_loadu_pd (mat1->data + offsetMat1 + i + 4),
-                                    _mm256_loadu_pd (transpose + offsetTran + i + 4),
-                                    sums);
-            sums = _mm256_fmadd_pd( _mm256_loadu_pd (mat1->data + offsetMat1 + i + 8),
-                                    _mm256_loadu_pd (transpose + offsetTran + i + 8),
-                                    sums);
-            sums = _mm256_fmadd_pd( _mm256_loadu_pd (mat1->data + offsetMat1 + i + 12),
-                                    _mm256_loadu_pd (transpose + offsetTran + i + 12),
-                                    sums);
+    } else { //size > 100000
+        // allocate the transpose data
+        double *transpose  = malloc(mat2->rows * mat2->cols * sizeof(double));
+        if (transpose == NULL) {
+            return -1;
         }
-        total = sums[0] + sums[1] + sums[2] + sums[3];
-        for (int i = mat1->cols / 16 * 16; i < mat1->cols; i++) {
-            total += mat1->data[offsetMat1 + i] * transpose[offsetTran + i];
+        // set up the transpose matrix
+        #pragma omp parallel for if (mat2->rows * mat2->cols >= 100000)
+        for (int i = 0; i < mat2->rows * mat2->cols; i++) {
+            transpose[i] = mat2->data[(i % mat2->rows) * mat2->cols + i / mat2->rows];
         }
-        result->data[index] = total;
+        #pragma omp parallel for if (result->rows * result->cols >= 100000)
+        for (int index = 0; index < result->rows * result->cols; index++) {
+            double total = 0;
+             __m256d sums = _mm256_set1_pd(0);
+            int offsetMat1 = (index / result->cols) * mat1->cols; 
+            int offsetTran = (index % result->cols) * mat1->cols;
+            for (int i = 0 ; i < mat1->cols / 16 * 16; i = i + 16){ 
+                sums = _mm256_fmadd_pd( _mm256_loadu_pd (mat1->data + offsetMat1 + i),
+                                        _mm256_loadu_pd (transpose + offsetTran + i),  
+                                        sums);
+                sums = _mm256_fmadd_pd( _mm256_loadu_pd (mat1->data + offsetMat1 + i + 4),
+                                        _mm256_loadu_pd (transpose + offsetTran + i + 4),
+                                        sums);
+                sums = _mm256_fmadd_pd( _mm256_loadu_pd (mat1->data + offsetMat1 + i + 8),
+                                        _mm256_loadu_pd (transpose + offsetTran + i + 8),
+                                        sums);
+                sums = _mm256_fmadd_pd( _mm256_loadu_pd (mat1->data + offsetMat1 + i + 12),
+                                        _mm256_loadu_pd (transpose + offsetTran + i + 12),
+                                        sums);
+            }
+            total = sums[0] + sums[1] + sums[2] + sums[3];
+            for (int i = mat1->cols / 16 * 16; i < mat1->cols; i++) {
+                total += mat1->data[offsetMat1 + i] * transpose[offsetTran + i];
+            }
+            result->data[index] = total;
+        }
+        free(transpose);
     }
-    free(transpose);
     return 0;
 }
 
