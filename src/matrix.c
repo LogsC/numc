@@ -187,11 +187,21 @@ void set(matrix *mat, int row, int col, double val) {
 void fill_matrix(matrix *mat, double val) {
     /* TODO: YOUR CODE HERE */
     // multithread / unroll?
-    int size = mat->rows * mat->cols;
-    omp_set_num_threads(16);
-    #pragma omp parallel for
-    for (int i = 0; i < size; i++) {
-        mat->data[i] = val;
+    double* data = *(mat->data);
+    __m256d vec = _mm256_set1_pd(val);
+    int size = mat->rows * mat-> cols;
+    if (size >= 100000) {
+        omp_set_num_threads(8);
+    }
+    #pragma omp parallel for if (size >= 100000)
+    for (int i = 0; i < size / 16 * 16; i += 16) {
+        _mm256_storeu_pd((data + i), vec);
+        _mm256_storeu_pd((data + i + 4), vec);
+        _mm256_storeu_pd((data + i + 8), vec);
+        _mm256_storeu_pd((data + i + 12), vec);
+    }
+     for (int i = size / 16 * 16; i < size; i++) {
+        data[i] = val;
     }
 }
 
@@ -207,15 +217,14 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         return 1;
     }
     int size = result->rows * result->cols;
-    double *r_data = result->data;
-    double *m1_data = mat1->data;
-    double *m2_data = mat2->data;
     // multithread / unroll?
     // omp
-    omp_set_num_threads(16);
-    #pragma omp parallel for
+    if (size >= 100000) {
+        omp_set_num_threads(8);
+    }
+    #pragma omp parallel for if (size >= 100000)
     for (int i = 0; i < size; i++) {
-        r_data[i] = m1_data[i] + m2_data[i];
+        result->data[i] = mat1->data[i] + mat2->data[i];
     }
     return 0; // success
 }
@@ -232,15 +241,14 @@ int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         return 1;
     }
     int size = result->rows * result->cols;
-    double *r_data = result->data;
-    double *m1_data = mat1->data;
-    double *m2_data = mat2->data;
     // multithread / unroll?
     // omp
-    omp_set_num_threads(16);
-    #pragma omp parallel for
+    if (size >= 100000) {
+        omp_set_num_threads(8);
+    }
+    #pragma omp parallel for if (size >= 100000)
     for (int i = 0; i < size; i++) {
-        r_data[i] = m1_data[i] - m2_data[i];
+        result->data[i] = mat1->data[i] - mat2->data[i];
     }
     return 0; // success
 }
@@ -256,8 +264,242 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     if (result->rows != mat1->rows || result->cols != mat2->cols || mat1->cols != mat2->rows) {
         return 1;
     }
-    // OPT?
+
+    // create separate case for matrix multiplcation under a certain size?
+
     // fill result with 0s
+    double *mat1Data    = *(mat1->data);
+    double *mat2Data    = *(mat2->data);
+    double *resultData  = *(result->data);
+
+    int size = result->rows;
+    fill_matrix(resultData, 0.0);
+    if (size < 32) { // simple naive
+
+        #pragma omp parallel for if (size >= 16)
+        for (int i = 0; i < size; i++) {
+            for (int k = 0; k < size; k++) {
+                for (int j = 0 ; j < size; j++) {
+                    resultData[i * size + j] += mat1Data[i * size + k] * mat2Data[k * size + j];
+                }
+            }
+        }
+        return 0;
+    } else if (size < 200) {
+        // allocate the transpose data
+        double *tranData  = malloc(size * size * sizeof(double));
+        if (tranData == NULL) {
+            return -1;
+        }
+
+        #pragma omp parallel for
+        for (int i = 0; i < size * size; i++) {
+            tranData[i] = mat2Data[(i % size) * size + i / size];
+        }
+
+        #pragma omp parallel for
+        for (int index = 0; index < size * size; index++) {
+            double total = 0;
+            __m256d sums = _mm256_set1_pd(0);
+            int i = index / size * size; int j = index % size * size;
+            for (int k = 0 ; k < size / 16 * 16; k = k + 16) {
+                sums = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i + k),
+                                        _mm256_loadu_pd (tranData + j + k),
+                                        sums);
+                sums = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i + k + 4),
+                                        _mm256_loadu_pd (tranData + j + k + 4),
+                                        sums);
+                sums = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i + k + 8),
+                                        _mm256_loadu_pd (tranData + j + k + 8),
+                                        sums);
+                sums = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i + k + 12),
+                                        _mm256_loadu_pd (tranData + j + k + 12),
+                                        sums);
+            }
+            total = sums[0] + sums[1] + sums[2] + sums[3];
+            for (int k = size / 16 * 16; k < size; k++) {
+                total += mat1Data[i + k] * tranData[j + k];
+            }
+            resultData[index] = total;
+        }
+        free(tranData);
+        return 0;
+    } else { // size .= 200
+        // allocate the transpose data
+        double *tranData  = malloc(size * size * sizeof(double));
+        if (tranData == NULL) {
+            PyErr_SetString(PyExc_RuntimeError, "Failed to allocate a transpose data.");
+            return -1;
+        }
+
+        #pragma omp parallel for
+        for (int i = 0; i < size * size; i++) {
+            tranData[i] = mat2Data[(i % size) * size + i / size];
+        }
+
+        #pragma omp parallel for
+        for (int index = 0; index < (size * size) / 4 * 4; index = index + 4) {
+            // #0
+            double total = 0;
+            __m256d sums = _mm256_set1_pd(0);
+            __m256d secs = _mm256_set1_pd(0);
+            int i = index / size * size; int j = index % size * size;
+            for (int k = 0 ; k < size / 32 * 32; k = k + 32) {
+                sums = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i + k),
+                                        _mm256_loadu_pd (tranData + j + k),
+                                        sums);
+                sums = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i + k + 4),
+                                        _mm256_loadu_pd (tranData + j + k + 4),
+                                        sums);
+                sums = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i + k + 8),
+                                        _mm256_loadu_pd (tranData + j + k + 8),
+                                        sums);
+                sums = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i + k + 12),
+                                        _mm256_loadu_pd (tranData + j + k + 12),
+                                        sums);
+                secs = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i + k + 16),
+                                        _mm256_loadu_pd (tranData + j + k + 16),
+                                        secs);
+                secs = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i + k + 20),
+                                        _mm256_loadu_pd (tranData + j + k + 20),
+                                        secs);
+                secs = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i + k + 24),
+                                        _mm256_loadu_pd (tranData + j + k + 24),
+                                        secs);
+                secs = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i + k + 28),
+                                        _mm256_loadu_pd (tranData + j + k + 28),
+                                        secs);
+            }
+            total = sums[0] + sums[1] + sums[2] + sums[3] + secs[0] + secs[1] + secs[2] + secs[3];
+            for (int k = size / 32 * 32; k < size; k++) {
+                total += mat1Data[i + k] * tranData[j + k];
+            }
+            resultData[index] = total;
+
+            // #1
+            double total1 = 0;
+            __m256d sums1 = _mm256_set1_pd(0);
+            __m256d secs1 = _mm256_set1_pd(0);
+            int i1 = (index + 1) / size * size; int j1 = (index + 1) % size * size;
+            for (int k = 0 ; k < size / 32 * 32; k = k + 32) {
+                sums1 = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i1 + k),
+                                         _mm256_loadu_pd (tranData + j1 + k),
+                                         sums1);
+                sums1 = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i1 + k + 4),
+                                         _mm256_loadu_pd (tranData + j1 + k + 4),
+                                         sums1);
+                sums1 = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i1 + k + 8),
+                                         _mm256_loadu_pd (tranData + j1 + k + 8),
+                                         sums1);
+                sums1 = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i1 + k + 12),
+                                         _mm256_loadu_pd (tranData + j1 + k + 12),
+                                         sums1);
+                secs1 = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i1 + k + 16),
+                                         _mm256_loadu_pd (tranData + j1 + k + 16),
+                                         secs1);
+                secs1 = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i1 + k + 20),
+                                         _mm256_loadu_pd (tranData + j1 + k + 20),
+                                         secs1);
+                secs1 = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i1 + k + 24),
+                                         _mm256_loadu_pd (tranData + j1 + k + 24),
+                                         secs1);
+                secs1 = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i1 + k + 28),
+                                         _mm256_loadu_pd (tranData + j1 + k + 28),
+                                         secs1);
+            }
+            total1 = sums1[0] + sums1[1] + sums1[2] + sums1[3] + secs1[0] + secs1[1] + secs1[2] + secs1[3];
+            for (int k = size / 32 * 32; k < size; k++) {
+                total1 += mat1Data[i1 + k] * tranData[j1 + k];
+            }
+            resultData[index + 1] = total1;
+
+            // #2
+            double total2 = 0;
+            __m256d sums2 = _mm256_set1_pd(0);
+            __m256d secs2 = _mm256_set1_pd(0);
+            int i2 = (index + 2) / size * size; int j2 = (index + 2) % size * size;
+            for (int k = 0 ; k < size / 32 * 32; k = k + 32) {
+                sums2 = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i2 + k),
+                                         _mm256_loadu_pd (tranData + j2 + k),
+                                         sums2);
+                sums2 = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i2 + k + 4),
+                                         _mm256_loadu_pd (tranData + j2 + k + 4),
+                                         sums2);
+                sums2 = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i2 + k + 8),
+                                         _mm256_loadu_pd (tranData + j2 + k + 8),
+                                         sums2);
+                sums2 = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i2 + k + 12),
+                                         _mm256_loadu_pd (tranData + j2 + k + 12),
+                                         sums2);
+                secs2 = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i2 + k + 16),
+                                         _mm256_loadu_pd (tranData + j2 + k + 16),
+                                         secs2);
+                secs2 = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i2 + k + 20),
+                                         _mm256_loadu_pd (tranData + j2 + k + 20),
+                                         secs2);
+                secs2 = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i2 + k + 24),
+                                         _mm256_loadu_pd (tranData + j2 + k + 24),
+                                         secs2);
+                secs2 = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i2 + k + 28),
+                                         _mm256_loadu_pd (tranData + j2 + k + 28),
+                                         secs2);
+            }
+            total2 = sums2[0] + sums2[1] + sums2[2] + sums2[3] + secs2[0] + secs2[1] + secs2[2] + secs2[3];
+            for (int k = size / 32 * 32; k < size; k++) {
+                total2 += mat1Data[i2 + k] * tranData[j2 + k];
+            }
+            resultData[index + 2] = total2;
+
+            // #3
+            double total3 = 0;
+            __m256d sums3 = _mm256_set1_pd(0);
+            __m256d secs3 = _mm256_set1_pd(0);
+            int i3 = (index + 3) / size * size; int j3 = (index + 3) % size * size;
+            for (int k = 0 ; k < size / 32 * 32; k = k + 32){
+                sums3 = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i3 + k),
+                                         _mm256_loadu_pd (tranData + j3 + k),
+                                         sums3);
+                sums3 = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i3 + k + 4),
+                                         _mm256_loadu_pd (tranData + j3 + k + 4),
+                                         sums3);
+                sums3 = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i3 + k + 8),
+                                         _mm256_loadu_pd (tranData + j3 + k + 8),
+                                         sums3);
+                sums3 = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i3 + k + 12),
+                                         _mm256_loadu_pd (tranData + j3 + k + 12),
+                                         sums3);
+                secs3 = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i3 + k + 16),
+                                         _mm256_loadu_pd (tranData + j3 + k + 16),
+                                         secs3);
+                secs3 = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i3 + k + 20),
+                                         _mm256_loadu_pd (tranData + j3 + k + 20),
+                                         secs3);
+                secs3 = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i3 + k + 24),
+                                         _mm256_loadu_pd (tranData + j3 + k + 24),
+                                         secs3);
+                secs3 = _mm256_fmadd_pd( _mm256_loadu_pd (mat1Data + i3 + k + 28),
+                                         _mm256_loadu_pd (tranData + j3 + k + 28),
+                                         secs3);
+            }
+            total3 = sums3[0] + sums3[1] + sums3[2] + sums3[3] + secs3[0] + secs3[1] + secs3[2] + secs3[3];
+            for (int k = size / 32 * 32; k < size; k++) {
+                total3 += mat1Data[i3 + k] * tranData[j3 + k];
+            }
+            resultData[index + 3] = total3;
+        }
+        // tail case
+        for (int index = (size * size) / 4 * 4; index < size * size; index++) {
+            int i = index / size; int j = index % size;
+            double total = 0;
+            for (int k = 0; k < size; k++) {
+                total += mat1Data[i * size + k] * mat2Data[k * size + j];
+            }
+            resultData[index] = total;
+        }
+        free(tranData);
+        return 0;
+    }
+    /*
     fill_matrix(result, 0.0);
     // multithread / unroll?
     for (int i = 0; i < result->rows; ++i) {
@@ -279,6 +521,7 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         }
     }
     return 0; // success
+     */
 }
 
 /*
@@ -351,9 +594,38 @@ int neg_matrix(matrix *result, matrix *mat) {
     if (result->rows != mat->rows || result->cols != mat->cols) {
         return 1;
     }
-    int size = result->rows * result->cols;
-    for (int i = 0; i < size; i++) {
-        result->data[i] = mat->data[i] * -1.0;
+    int mHeight = mat->rows;
+    int mWidth = mat->cols;
+    int rHeight = result->rows;
+    int rWidth = result->cols;
+    /* Check for valid dimensions */
+    if (mHeight <= 0 || mWidth <= 0 || mHeight != rHeight || mWidth != rWidth) {
+        return -1;
+    }
+    /* Get + check for valid data */
+    double* rData = *(result->data);
+    double* mData = *(mat->data);
+    int size = mHeight * mWidth;
+    __m256d zeros = _mm256_set1_pd(0);
+    if (size >= 100000) {
+        omp_set_num_threads(8);
+    }
+    #pragma omp parallel for if (size >= 100000)
+    for (int i = 0; i < size/16 * 16; i += 16) {
+        _mm256_storeu_pd((rData + i + 0),
+        _mm256_sub_pd(zeros, _mm256_loadu_pd(mData + i + 0)));
+
+        _mm256_storeu_pd((rData + i + 4),
+        _mm256_sub_pd(zeros, _mm256_loadu_pd(mData + i + 4)));
+
+        _mm256_storeu_pd((rData + i + 8),
+        _mm256_sub_pd(zeros, _mm256_loadu_pd(mData + i + 8)));
+
+        _mm256_storeu_pd((rData + i + 12),
+        _mm256_sub_pd(zeros, _mm256_loadu_pd(mData + i + 12)));
+    }
+    for (int i = size/16 * 16; i < size; i++) {
+        rData[i] = 0 - mData[i];
     }
     return 0; // success
 }
@@ -368,13 +640,38 @@ int abs_matrix(matrix *result, matrix *mat) {
     if (result->rows != mat->rows || result->cols != mat->cols) {
         return 1;
     }
-    int size = result->rows * result->cols;
-    for (int i = 0; i < size; i++) {
-        if (mat->data[i] >= 0) {
-            result->data[i] = mat->data[i];
-        } else {
-            result->data[i] = mat->data[i] * -1.0;
-        }
+    double* rData = *(result->data);
+    double* mData = *(mat->data);
+    int size = mHeight * mWidth;
+    __m256d zeros = _mm256_set1_pd(0);
+    if (size >= 100000) {
+        omp_set_num_threads(8);
+    }
+    #pragma omp parallel for if (size >= 100000)
+    for (int i = 0; i < size/16 * 16; i += 16) {
+        __m256d m1_v0 = _mm256_loadu_pd(mData + i + 0);
+        __m256d dif_v0 = _mm256_sub_pd(zeros, m1_v0);
+        __m256d abs_v0 = _mm256_max_pd(dif_v0, m1_v0);
+        _mm256_storeu_pd((rData + i + 0), abs_v0);
+
+        __m256d m1_v1 = _mm256_loadu_pd(mData + i + 4);
+        __m256d dif_v1 = _mm256_sub_pd(zeros, m1_v1);
+        __m256d abs_v1 = _mm256_max_pd(dif_v1, m1_v1);
+        _mm256_storeu_pd((rData + i + 4), abs_v1);
+
+        __m256d m1_v2 = _mm256_loadu_pd(mData + i + 8);
+        __m256d dif_v2 = _mm256_sub_pd(zeros, m1_v2);
+        __m256d abs_v2 = _mm256_max_pd(dif_v2, m1_v2);
+        _mm256_storeu_pd((rData + i + 8), abs_v2);
+
+        __m256d m1_v3 = _mm256_loadu_pd(mData + i + 12);
+        __m256d dif_v3 = _mm256_sub_pd(zeros, m1_v3);
+        __m256d abs_v3 = _mm256_max_pd(dif_v3, m1_v3);
+        _mm256_storeu_pd((rData + i + 12), abs_v3);
+    }
+    for (int i = size/16 * 16; i < size; i++) {
+        double val = mData[i];
+        rData[i] = (val >= 0) ? val : -val;
     }
     return 0; // success
 }
