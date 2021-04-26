@@ -329,7 +329,7 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         }
         #pragma omp parallel for
         for (int index = 0; index < (size * size) / 4 * 4; index = index + 4) {
-            // #0
+            // first unroll
             double total = 0;
             __m256d sums = _mm256_set1_pd(0);
             __m256d secs = _mm256_set1_pd(0);
@@ -365,7 +365,7 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
                 total += mat1->data[i + k] * tranData[j + k];
             }
             result->data[index] = total;
-            // #1
+            // second unroll
             double total1 = 0;
             __m256d sums1 = _mm256_set1_pd(0);
             __m256d secs1 = _mm256_set1_pd(0);
@@ -401,7 +401,7 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
                 total1 += mat1->data[i1 + k] * tranData[j1 + k];
             }
             result->data[index + 1] = total1;
-            // #2
+            // third unroll
             double total2 = 0;
             __m256d sums2 = _mm256_set1_pd(0);
             __m256d secs2 = _mm256_set1_pd(0);
@@ -437,7 +437,7 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
                 total2 += mat1->data[i2 + k] * tranData[j2 + k];
             }
             result->data[index + 2] = total2;
-            // #3
+            // fourth unroll
             double total3 = 0;
             __m256d sums3 = _mm256_set1_pd(0);
             __m256d secs3 = _mm256_set1_pd(0);
@@ -496,62 +496,9 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
 int pow_matrix(matrix *result, matrix *mat, int pow) {
     /* TODO: YOUR CODE HERE */
     // if mat is not square or pow is negative, error 1
-    /*
     if (mat->rows != mat->cols || pow < 0) {
         return 1;
     }
-    int size = mat->rows * mat->cols * sizeof(double);
-    if (pow == 0) {
-        #pragma omp parallel for if (result->rows >= 10)
-        for (int i = 0; i < size; ++i) {
-            if (i / result->cols == i % result->cols) {
-                result->data[i] = 1.0;
-            } else {
-                result->data[i] = 0.0;
-            }
-        }
-        return 0;
-    } else if (pow == 1) {
-        memcpy(result->data, mat->data, size);
-        return 0;
-    }
-    matrix *temp1, *temp2;
-    if (allocate_matrix(&temp1, result->rows, result->cols) == -1) {
-        return -1;
-    }
-    if (allocate_matrix(&temp2, result->rows, result->cols) == -1) {
-        return -1;
-    }
-    memcpy(temp1->data, mat->data, size);
-    #pragma omp parallel for if (result->rows >= 10)
-    for (int i = 0; i < size; ++i) {
-        if (i / result->cols == i % result->cols) {
-            result->data[i] = 1.0;
-        } else {
-            result->data[i] = 0.0;
-        }
-    }
-    double *swap;
-    while (pow > 0) {
-        if (pow % 2 == 1) {
-            mul_matrix(temp2, result, temp1);
-            swap = result->data;
-            result->data = temp2->data;
-            temp2->data = swap;
-        }
-        pow = pow / 2;
-        if (pow > 0) {
-            mul_matrix(temp2, temp1, temp1);
-            swap = temp1->data;
-            temp1->data = temp2->data;
-            temp2->data = swap;
-        }
-    }
-    deallocate_matrix(temp1);
-    deallocate_matrix(temp2);
-    return 0; // success
-     */
-    
     // calculate size of result
     int size = result->rows * result->cols;
     // handle pow = 0, 1 cases
