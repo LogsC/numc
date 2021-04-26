@@ -257,14 +257,72 @@ int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
  * Remember that matrix multiplication is not the same as multiplying individual elements.
  */
 int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
-    // create non-pow matmul
-    return 1;
+    // if dimensions do note match, error 1
+    if (result->rows != mat1->rows || result->cols != mat2->cols || mat1->cols != mat2->rows) {
+        return 1;
+    }
+    // if matrix multiplication is small, use naive method
+    if (result->rows * result->cols <= 100000) {
+        // naive implementation of mul_matrix (use transpose?)
+        #pragma omp parallel for if (size >= 16)
+        for (int i = 0; i < result->rows; ++i) {
+            for (int j = 0; j < result->cols; ++j) {
+                double curr_sum = 0.0;
+                {
+                    for (int k = 0; k < mat1->cols; k++) {
+                        curr_sum += (get(mat1, i, k) * get(mat2, k, j));
+                    }
+                }
+                set(result, i, j, curr_sum);
+            }
+        }
+        return 0;
+    }
+    // allocate the transpose data
+    double *transpose  = malloc(mat2->rows * mat2->cols * sizeof(double));
+    if (transpose == NULL) {
+        return -1;
+    }
+    // set up the transpose matrix
+    #pragma omp parallel for if (mat2->rows * mat2->cols >= 100000)
+    for (int i = 0; i < mat2->rows * mat2->cols; i++) {
+        transpose[i] = mat2->data[(i % mat2->rows) * mat2->cols + i / mat2->rows];
+    }
+    #pragma omp parallel for if (result->rows * result->cols >= 100000)
+    for (int index = 0; index < result->rows * result->cols; index++) {
+        double total = 0;
+         __m256d sums = _mm256_set1_pd(0);
+        int offsetMat1 = (index / result->cols) * mat1->cols; 
+        int offsetTran = (index % result->cols) * mat1->cols;
+        for (int i = 0 ; i < mat1->cols / 16 * 16; i = i + 16){ 
+            sums = _mm256_fmadd_pd( _mm256_loadu_pd (mat1->data + offsetMat1 + i),
+                                    _mm256_loadu_pd (transpose + offsetTran + i),  
+                                    sums);
+            sums = _mm256_fmadd_pd( _mm256_loadu_pd (mat1->data + offsetMat1 + i + 4),
+                                    _mm256_loadu_pd (transpose + offsetTran + i + 4),
+                                    sums);
+            sums = _mm256_fmadd_pd( _mm256_loadu_pd (mat1->data + offsetMat1 + i + 8),
+                                    _mm256_loadu_pd (transpose + offsetTran + i + 8),
+                                    sums);
+            sums = _mm256_fmadd_pd( _mm256_loadu_pd (mat1->data + offsetMat1 + i + 12),
+                                    _mm256_loadu_pd (transpose + offsetTran + i + 12),
+                                    sums);
+        }
+        total = sums[0] + sums[1] + sums[2] + sums[3];
+        for (int i = mat1->cols / 16 * 16; i < mat1->cols; i++) {
+            total += mat1->data[offsetMat1 + i] * transpose[offsetTran + i];
+        }
+        result->data[index] = total;
+    }
+    free(transpose);
+    return 0;
 }
 
 /*
  * Store the result of multiplying mat1 and mat2 to `result`.
  * Return 0 upon success and a nonzero value upon failure.
  * Remember that matrix multiplication is not the same as multiplying individual elements.
+ * mul_matrix specificially made for use in the pow_matrix() function
  */
 int mul_matrix_pow(matrix *result, matrix *mat1, matrix *mat2) {
     /* TODO: YOUR CODE HERE */
@@ -279,9 +337,9 @@ int mul_matrix_pow(matrix *result, matrix *mat1, matrix *mat2) {
     result->data = calloc(res_size, sizeof(double));
     if (size < 32) { // simple naive
         #pragma omp parallel for if (size >= 16)
-        for (int i = 0; i < size; i++) {
-            for (int k = 0; k < size; k++) {
-                for (int j = 0 ; j < size; j++) {
+        for (int i = 0; i < result->rows; i++) {
+            for (int k = 0; k < result->cols; k++) {
+                for (int j = 0 ; j < mat1->cols; j++) {
                     result->data[i * size + j] += mat1->data[i * size + k] * mat2->data[k * size + j];
                 }
             }
