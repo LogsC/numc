@@ -502,9 +502,6 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
     int size = mat->rows * mat->cols * sizeof(double);
     if (pow == 0) {
         int result_size = result->rows * result->cols;
-        if (result_size >= 100000) {
-            omp_set_num_threads(16);
-        }
         #pragma omp parallel for if (result_size >= 100000)
         for (int i = 0; i < size; ++i) {
             if (i / result->cols == i % result->cols) {
@@ -527,10 +524,7 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
     }
     memcpy(temp1->data, mat->data, size);
     int result_size = result->rows * result->cols;
-    if (result_size >= 100000) {
-        omp_set_num_threads(16);
-    }
-    #pragma omp parallel for if (result_size >= 100000)
+    #pragma omp parallel for if (result->rows >= 10)
     for (int i = 0; i < size; ++i) {
         if (i / result->cols == i % result->cols) {
             result->data[i] = 1.0;
