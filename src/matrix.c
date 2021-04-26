@@ -567,10 +567,7 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
         return 0;
     } else if (pow == 1) {
         // copy mat into result
-        // copy temp data into result data
-        for (int i = 0; i < size; ++i) {
-            result->data[i] = mat->data[i];
-        }
+        memcpy(result->data, mat->data, size * sizeof(double));
         return 0;
     }
     // create temp matricies to store values to transfer to result
@@ -591,9 +588,7 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
         mul_matrix(result, temp2, mat); // multiply by mat 1 more time
     } else {
         // copy mat into result
-        for (int i = 0; i < size; i++) {
-            memcpy(result->data, mat->data, size * sizeof(double));
-        }
+        memcpy(result->data, mat->data, size * sizeof(double));
     }
     // deallocate temp and temp2
     deallocate_matrix(temp);
