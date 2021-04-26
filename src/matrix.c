@@ -293,7 +293,7 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
              __m256d sums = _mm256_set1_pd(0);
             int offsetMat1 = (index / result->cols) * mat1->cols; 
             int offsetTran = (index % result->cols) * mat1->cols;
-            for (int i = 0 ; i < mat1->cols / 16 * 16; i = i + 16) { 
+            for (int i = 0 ; i < mat1->cols / 16 * 16; i += 16) { 
                 sums = _mm256_fmadd_pd( _mm256_loadu_pd (mat1->data + offsetMat1 + i),
                                         _mm256_loadu_pd (transpose + offsetTran + i),  
                                         sums);
@@ -390,7 +390,7 @@ int neg_matrix(matrix *result, matrix *mat) {
         omp_set_num_threads(16);
     }
     #pragma omp parallel for if (size >= 100000)
-    for (int i = 0; i < size/16 * 16; i += 16) {
+    for (int i = 0; i < size / 16 * 16; i += 16) {
         _mm256_storeu_pd((result->data + i + 0),
         _mm256_sub_pd(zeros, _mm256_loadu_pd(mat->data + i + 0)));
 
@@ -399,7 +399,7 @@ int neg_matrix(matrix *result, matrix *mat) {
 
         _mm256_storeu_pd((result->data + i + 8),
         _mm256_sub_pd(zeros, _mm256_loadu_pd(mat->data + i + 8)));
-        
+
         _mm256_storeu_pd((result->data + i + 12),
         _mm256_sub_pd(zeros, _mm256_loadu_pd(mat->data + i + 12)));
     }
@@ -425,7 +425,7 @@ int abs_matrix(matrix *result, matrix *mat) {
         omp_set_num_threads(16);
     }
     #pragma omp parallel for if (size >= 100000)
-    for (int i = 0; i < size/16 * 16; i += 16) {
+    for (int i = 0; i < size / 16 * 16; i += 16) {
         __m256d m1_v0 = _mm256_loadu_pd(mat->data + i + 0);
         __m256d dif_v0 = _mm256_sub_pd(zeros, m1_v0);
         __m256d abs_v0 = _mm256_max_pd(dif_v0, m1_v0);
@@ -446,7 +446,7 @@ int abs_matrix(matrix *result, matrix *mat) {
         __m256d abs_v3 = _mm256_max_pd(dif_v3, m1_v3);
         _mm256_storeu_pd((result->data + i + 12), abs_v3);
     }
-    for (int i = size/16 * 16; i < size; i++) {
+    for (int i = size / 16 * 16; i < size; i++) {
         double val = mat->data[i];
         if (val >= 0) {
             result->data[i] = val;
