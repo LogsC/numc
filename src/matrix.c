@@ -293,7 +293,7 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
              __m256d sums = _mm256_set1_pd(0);
             int offsetMat1 = (index / result->cols) * mat1->cols; 
             int offsetTran = (index % result->cols) * mat1->cols;
-            for (int i = 0 ; i < mat1->cols / 16 * 16; i = i + 16){ 
+            for (int i = 0 ; i < mat1->cols / 16 * 16; i = i + 16) { 
                 sums = _mm256_fmadd_pd( _mm256_loadu_pd (mat1->data + offsetMat1 + i),
                                         _mm256_loadu_pd (transpose + offsetTran + i),  
                                         sums);
@@ -399,7 +399,7 @@ int neg_matrix(matrix *result, matrix *mat) {
 
         _mm256_storeu_pd((result->data + i + 8),
         _mm256_sub_pd(zeros, _mm256_loadu_pd(mat->data + i + 8)));
-
+        
         _mm256_storeu_pd((result->data + i + 12),
         _mm256_sub_pd(zeros, _mm256_loadu_pd(mat->data + i + 12)));
     }
