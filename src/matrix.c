@@ -318,6 +318,67 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     return 0;
 }
 
+int mul_matrix_pow(matrix *result, matrix *mat1, matrix *mat2) {
+    /* TODO: YOUR CODE HERE */
+    // if dimensions do note match, error 1
+    if (result->rows != mat1->rows || result->cols != mat2->cols || mat1->cols != mat2->rows) {
+        return 1;
+    }
+    // size = rows = cols (square matrices)
+    int size = result->rows;
+    // fill result with 0s
+    int res_size = result->rows * result->cols;
+    result->data = calloc(res_size, sizeof(double));
+    if (size <= 32) { // simple naive
+        #pragma omp parallel for if (size >= 16)
+        for (int i = 0; i < size; i++) {
+            for (int k = 0; k < size; k++) {
+                for (int j = 0 ; j < mat1->cols; j++) {
+                    result->data[i * size + j] += mat1->data[i * size + k] * mat2->data[k * size + j];
+                }
+            }
+        }
+        return 0;
+    } else {
+        // allocate the transpose data
+        double *transpose  = malloc(size * size * sizeof(double));
+        if (transpose == NULL) {
+            return -1;
+        }
+        #pragma omp parallel for
+        for (int i = 0; i < size * size; i++) {
+            transpose[i] = mat2->data[(i % size) * size + i / size];
+        }
+        #pragma omp parallel for
+        for (int index = 0; index < size * size; index++) {
+            double total = 0;
+            __m256d sums = _mm256_set1_pd(0);
+            int i = index / size * size; int j = index % size * size;
+            for (int k = 0 ; k < size / 16 * 16; k = k + 16) {
+                sums = _mm256_fmadd_pd( _mm256_loadu_pd (mat1->data + i + k),
+                                        _mm256_loadu_pd (transpose + j + k),
+                                        sums);
+                sums = _mm256_fmadd_pd( _mm256_loadu_pd (mat1->data + i + k + 4),
+                                        _mm256_loadu_pd (transpose + j + k + 4),
+                                        sums);
+                sums = _mm256_fmadd_pd( _mm256_loadu_pd (mat1->data + i + k + 8),
+                                        _mm256_loadu_pd (transpose + j + k + 8),
+                                        sums);
+                sums = _mm256_fmadd_pd( _mm256_loadu_pd (mat1->data + i + k + 12),
+                                        _mm256_loadu_pd (transpose + j + k + 12),
+                                        sums);
+            }
+            total = sums[0] + sums[1] + sums[2] + sums[3];
+            for (int k = size / 16 * 16; k < size; k++) {
+                total += mat1->data[i + k] * transpose[j + k];
+            }
+            result->data[index] = total;
+        }
+        free(transpose);
+        return 0;
+    }
+}
+
 /*
  * Store the result of raising mat to the (pow)th power to `result`.
  * Return 0 upon success and a nonzero value upon failure.
@@ -358,11 +419,11 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
         return -1;
     }
     // recurse with mat^2 and pow / 2 until pow == 0 or 1
-    mul_matrix(temp, mat, mat); // temp = mat^2
+    mul_matrix_pow(temp, mat, mat); // temp = mat^2
     pow_matrix(temp2, temp, pow / 2); // recurse w/ mat^2 and pow/2, store in temp2
     // handle case of odd pow
     if (pow % 2 == 1) {
-        mul_matrix(result, temp2, mat); // multiply by mat 1 more time
+        mul_matrix_pow(result, temp2, mat); // multiply by mat 1 more time
     } else {
         // copy mat into result
         memcpy(result->data, temp2->data, size * sizeof(double));
