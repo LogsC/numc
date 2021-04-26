@@ -187,7 +187,6 @@ void set(matrix *mat, int row, int col, double val) {
 void fill_matrix(matrix *mat, double val) {
     /* TODO: YOUR CODE HERE */
     // multithread / unroll?
-    double* data = *(mat->data);
     __m256d vec = _mm256_set1_pd(val);
     int size = mat->rows * mat-> cols;
     if (size >= 100000) {
@@ -195,13 +194,13 @@ void fill_matrix(matrix *mat, double val) {
     }
     #pragma omp parallel for if (size >= 100000)
     for (int i = 0; i < size / 16 * 16; i += 16) {
-        _mm256_storeu_pd((data + i), vec);
-        _mm256_storeu_pd((data + i + 4), vec);
-        _mm256_storeu_pd((data + i + 8), vec);
-        _mm256_storeu_pd((data + i + 12), vec);
+        _mm256_storeu_pd((mat->data + i), vec);
+        _mm256_storeu_pd((mat->data + i + 4), vec);
+        _mm256_storeu_pd((mat->data + i + 8), vec);
+        _mm256_storeu_pd((mat->data + i + 12), vec);
     }
      for (int i = size / 16 * 16; i < size; i++) {
-        data[i] = val;
+        mat->data[i] = val;
     }
 }
 
@@ -267,7 +266,7 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     // create separate case for matrix multiplcation under a certain size?
     int size = result->rows;
     // fill result with 0s
-    fill_matrix(result->data, 0.0);
+    fill_matrix(result, 0.0);
     if (size < 32) { // simple naive
         #pragma omp parallel for if (size >= 16)
         for (int i = 0; i < size; i++) {
@@ -584,13 +583,6 @@ int neg_matrix(matrix *result, matrix *mat) {
     int mWidth = mat->cols;
     int rHeight = result->rows;
     int rWidth = result->cols;
-    /* Check for valid dimensions */
-    if (mHeight <= 0 || mWidth <= 0 || mHeight != rHeight || mWidth != rWidth) {
-        return -1;
-    }
-    /* Get + check for valid data */
-    double* rData = *(result->data);
-    double* mData = *(mat->data);
     int size = mHeight * mWidth;
     __m256d zeros = _mm256_set1_pd(0);
     if (size >= 100000) {
@@ -598,20 +590,20 @@ int neg_matrix(matrix *result, matrix *mat) {
     }
     #pragma omp parallel for if (size >= 100000)
     for (int i = 0; i < size/16 * 16; i += 16) {
-        _mm256_storeu_pd((rData + i + 0),
-        _mm256_sub_pd(zeros, _mm256_loadu_pd(mData + i + 0)));
+        _mm256_storeu_pd((result->data + i + 0),
+        _mm256_sub_pd(zeros, _mm256_loadu_pd(mat->data + i + 0)));
 
-        _mm256_storeu_pd((rData + i + 4),
-        _mm256_sub_pd(zeros, _mm256_loadu_pd(mData + i + 4)));
+        _mm256_storeu_pd((result->data + i + 4),
+        _mm256_sub_pd(zeros, _mm256_loadu_pd(mat->data + i + 4)));
 
-        _mm256_storeu_pd((rData + i + 8),
-        _mm256_sub_pd(zeros, _mm256_loadu_pd(mData + i + 8)));
+        _mm256_storeu_pd((result->data + i + 8),
+        _mm256_sub_pd(zeros, _mm256_loadu_pd(mat->data + i + 8)));
 
-        _mm256_storeu_pd((rData + i + 12),
-        _mm256_sub_pd(zeros, _mm256_loadu_pd(mData + i + 12)));
+        _mm256_storeu_pd((result->data + i + 12),
+        _mm256_sub_pd(zeros, _mm256_loadu_pd(mat->data + i + 12)));
     }
     for (int i = size/16 * 16; i < size; i++) {
-        rData[i] = 0 - mData[i];
+        result->data[i] = 0 - mat->data[i];
     }
     return 0; // success
 }
@@ -626,8 +618,10 @@ int abs_matrix(matrix *result, matrix *mat) {
     if (result->rows != mat->rows || result->cols != mat->cols) {
         return 1;
     }
-    double* rData = *(result->data);
-    double* mData = *(mat->data);
+    int mHeight = mat->rows;
+    int mWidth = mat->cols;
+    int rHeight = result->rows;
+    int rWidth = result->cols;
     int size = mHeight * mWidth;
     __m256d zeros = _mm256_set1_pd(0);
     if (size >= 100000) {
@@ -635,29 +629,29 @@ int abs_matrix(matrix *result, matrix *mat) {
     }
     #pragma omp parallel for if (size >= 100000)
     for (int i = 0; i < size/16 * 16; i += 16) {
-        __m256d m1_v0 = _mm256_loadu_pd(mData + i + 0);
+        __m256d m1_v0 = _mm256_loadu_pd(mat->data + i + 0);
         __m256d dif_v0 = _mm256_sub_pd(zeros, m1_v0);
         __m256d abs_v0 = _mm256_max_pd(dif_v0, m1_v0);
-        _mm256_storeu_pd((rData + i + 0), abs_v0);
+        _mm256_storeu_pd((result->data + i + 0), abs_v0);
 
-        __m256d m1_v1 = _mm256_loadu_pd(mData + i + 4);
+        __m256d m1_v1 = _mm256_loadu_pd(mat->data + i + 4);
         __m256d dif_v1 = _mm256_sub_pd(zeros, m1_v1);
         __m256d abs_v1 = _mm256_max_pd(dif_v1, m1_v1);
-        _mm256_storeu_pd((rData + i + 4), abs_v1);
+        _mm256_storeu_pd((result->data + i + 4), abs_v1);
 
-        __m256d m1_v2 = _mm256_loadu_pd(mData + i + 8);
+        __m256d m1_v2 = _mm256_loadu_pd(mat->data + i + 8);
         __m256d dif_v2 = _mm256_sub_pd(zeros, m1_v2);
         __m256d abs_v2 = _mm256_max_pd(dif_v2, m1_v2);
-        _mm256_storeu_pd((rData + i + 8), abs_v2);
+        _mm256_storeu_pd((result->data + i + 8), abs_v2);
 
-        __m256d m1_v3 = _mm256_loadu_pd(mData + i + 12);
+        __m256d m1_v3 = _mm256_loadu_pd(mat->data + i + 12);
         __m256d dif_v3 = _mm256_sub_pd(zeros, m1_v3);
         __m256d abs_v3 = _mm256_max_pd(dif_v3, m1_v3);
-        _mm256_storeu_pd((rData + i + 12), abs_v3);
+        _mm256_storeu_pd((result->data + i + 12), abs_v3);
     }
     for (int i = size/16 * 16; i < size; i++) {
-        double val = mData[i];
-        rData[i] = (val >= 0) ? val : -val;
+        double val = mat->data[i];
+        result->data[i] = (val >= 0) ? val : -val;
     }
     return 0; // success
 }
