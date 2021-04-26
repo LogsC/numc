@@ -144,14 +144,14 @@ class TestPow(TestCase):
     def test_medium_pow(self):
         # TODO: YOUR CODE HERE
         dp_mat, nc_mat = rand_dp_nc_matrix(7, 7, seed=0)
-        is_correct, speed_up = compute([dp_mat, 5], [nc_mat, 5], "pow")
+        is_correct, speed_up = compute([dp_mat, 7], [nc_mat, 7], "pow")
         self.assertTrue(is_correct)
         print_speedup(speed_up)
 
     def test_large_pow(self):
         # TODO: YOUR CODE HERE
         dp_mat, nc_mat = rand_dp_nc_matrix(7, 7, seed=0)
-        is_correct, speed_up = compute([dp_mat, 8], [nc_mat, 8], "pow")
+        is_correct, speed_up = compute([dp_mat, 15], [nc_mat, 15], "pow")
         self.assertTrue(is_correct)
         print_speedup(speed_up)
 
