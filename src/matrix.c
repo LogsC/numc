@@ -66,14 +66,13 @@ int allocate_matrix(matrix **mat, int rows, int cols) {
     }
     int size = rows * cols;
     // allocate memory for data array = # of entries * size of double
-    double *data = (double *) malloc(size * sizeof(double));
+    // initialize data array entries to 0.0
+    double *data = (double *) calloc(size * sizeof(double));
     // if space not found, error -1
     if (data == NULL) {
+        free(mallocatrix);
         return -1;
     }
-    // initialize data array entries to 0.0
-    int mat_size = mat->rows * mat->cols;
-    mat->data = calloc(mat_size, sizeof(double));
     // set mallocatrix values as relevant
     mallocatrix->rows = rows;
     mallocatrix->cols = cols;
