@@ -150,7 +150,7 @@ class TestPow(TestCase):
 
     def test_large_pow(self):
         # TODO: YOUR CODE HERE
-        dp_mat, nc_mat = rand_dp_nc_matrix(100, 100, seed=0)
+        dp_mat, nc_mat = rand_dp_nc_matrix(10, 10, seed=0)
         is_correct, speed_up = compute([dp_mat, 10], [nc_mat, 10], "pow")
         self.assertTrue(is_correct)
         print_speedup(speed_up)

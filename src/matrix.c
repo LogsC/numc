@@ -318,7 +318,6 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         // allocate the transpose data
         double *tranData  = malloc(size * size * sizeof(double));
         if (tranData == NULL) {
-            PyErr_SetString(PyExc_RuntimeError, "Failed to allocate a transpose data.");
             return -1;
         }
         #pragma omp parallel for
@@ -530,7 +529,7 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
             result->data[i] = 0.0;
         }
     }
-    double **swap = NULL;
+    double **swap;
     while (pow > 0) {
         if (pow % 2 == 1) {
             mul_matrix(temp2, result, temp1);
