@@ -484,29 +484,6 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         free(tranData);
         return 0;
     }
-    /*
-    fill_matrix(result, 0.0);
-    // multithread / unroll?
-    for (int i = 0; i < result->rows; ++i) {
-        for (int j = 0; j < result->cols; ++j) {
-            // parse result matrix, use omp to obtain row * col sum
-            double curr_sum = 0.0;
-            #pragma omp parallel reduction(+:curr_sum)
-            {
-                #pragma omp for
-                for (int k = 0; k < mat1->cols; k++) {
-                    // curr sum += mat1[row][k] * mat2[k][col]
-                    // i = result row = mat1 row
-                    // j = result col = mat2 col
-                    // k = mat1 col = mat2 row
-                    curr_sum += get(mat1, i, k) * get(mat2, k, j);
-                }
-            }
-            set(result, i, j, curr_sum);
-        }
-    }
-    return 0; // success
-     */
 }
 
 /*

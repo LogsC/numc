@@ -137,21 +137,28 @@ class TestPow(TestCase):
     def test_small_pow(self):
         # TODO: YOUR CODE HERE
         dp_mat, nc_mat = rand_dp_nc_matrix(2, 2, seed=0)
-        is_correct, speed_up = compute([dp_mat, 3], [nc_mat, 3], "pow")
+        is_correct, speed_up = compute([dp_mat, 1], [nc_mat, 1], "pow")
         self.assertTrue(is_correct)
         print_speedup(speed_up)
 
     def test_medium_pow(self):
         # TODO: YOUR CODE HERE
         dp_mat, nc_mat = rand_dp_nc_matrix(10, 10, seed=0)
-        is_correct, speed_up = compute([dp_mat, 3], [nc_mat, 3], "pow")
+        is_correct, speed_up = compute([dp_mat, 5], [nc_mat, 5], "pow")
         self.assertTrue(is_correct)
         print_speedup(speed_up)
 
     def test_large_pow(self):
         # TODO: YOUR CODE HERE
         dp_mat, nc_mat = rand_dp_nc_matrix(100, 100, seed=0)
-        is_correct, speed_up = compute([dp_mat, 3], [nc_mat, 3], "pow")
+        is_correct, speed_up = compute([dp_mat, 10], [nc_mat, 10], "pow")
+        self.assertTrue(is_correct)
+        print_speedup(speed_up)
+
+    def test_smol_pow(self):
+        # TODO: YOUR CODE HERE
+        dp_mat, nc_mat = rand_dp_nc_matrix(100, 100, seed=0)
+        is_correct, speed_up = compute([dp_mat, 0], [nc_mat, 0], "pow")
         self.assertTrue(is_correct)
         print_speedup(speed_up)
 
