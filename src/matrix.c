@@ -497,6 +497,59 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
     if (mat->rows != mat->cols || pow < 0) {
         return 1;
     }
+    int size = mat->rows * mat->cols * sizeof(double);
+    if (pow == 0) {
+        int result_size = result->rows * result->cols;
+        #pragma omp parallel for if (result_size >= 100000)
+        for (int i = 0; i < size; ++i) {
+            if (i / result->cols == i % result->cols) {
+                result->data[i] = 1.0;
+            } else {
+                result->data[i] = 0.0;
+            }
+        }
+        return 0;
+    } else if (pow == 1) {
+        memcpy(result->data, mat->data, size);
+        return 0;
+    }
+    matrix *temp1, *temp2;
+    if (allocate_matrix(&temp1, result->rows, result->cols) == -1) {
+        return -1;
+    }
+    if (allocate_matrix(&temp2, result->rows, result->cols) == -1) {
+        return -1;
+    }
+    memcpy(temp1->data, mat->data, size);
+    int result_size = result->rows * result->cols;
+    #pragma omp parallel for if (result_size >= 100000)
+    for (int i = 0; i < size; ++i) {
+        if (i / result->cols == i % result->cols) {
+            result->data[i] = 1.0;
+        } else {
+            result->data[i] = 0.0;
+        }
+    }
+    double **swap = NULL;
+    while (pow > 0) {
+        if (pow % 2 == 1) {
+            mul_matrix(temp2, result, temp1);
+            swap = result->data;
+            result->data = temp2->data;
+            temp2->data = swap;
+        }
+        pow = pow / 2;
+        if (pow > 0) {
+            mul_matrix(temp2, temp1, temp1);
+            swap = temp1->data;
+            temp1->data = temp2->data;
+            temp2->data = swap;
+        }
+    }
+    deallocate_matrix(temp1);
+    deallocate_matrix(temp2);
+    return 0; // success
+    /*
     // calculate size of result
     int size = result->rows * result->cols;
     // handle pow = 0, 1 cases
@@ -544,6 +597,7 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
     deallocate_matrix(temp);
     deallocate_matrix(temp2);
     return 0; // success
+     */
 }
 
 /*
