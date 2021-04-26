@@ -72,9 +72,8 @@ int allocate_matrix(matrix **mat, int rows, int cols) {
         return -1;
     }
     // initialize data array entries to 0.0
-    for (int i = 0; i < size; i++) {
-        data[i] = 0.0;
-    }
+    int mat_size = mat->rows * mat->cols;
+    mat->data = calloc(mat_size, sizeof(double);
     // set mallocatrix values as relevant
     mallocatrix->rows = rows;
     mallocatrix->cols = cols;
@@ -267,7 +266,7 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     // create separate case for matrix multiplcation under a certain size?
     int size = result->rows;
     // fill result with 0s
-    int res_size = mat->rows * mat->cols;
+    int res_size = rseult->rows * result->cols;
     result->data = calloc(res_size, sizeof(double);
     if (!result->data) {
         return -1;
