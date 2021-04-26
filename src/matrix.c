@@ -190,7 +190,7 @@ void fill_matrix(matrix *mat, double val) {
     __m256d vec = _mm256_set1_pd(val);
     int size = mat->rows * mat-> cols;
     if (size >= 100000) {
-        omp_set_num_threads(8);
+        omp_set_num_threads(16);
     }
     #pragma omp parallel for if (size >= 100000)
     for (int i = 0; i < size / 16 * 16; i += 16) {
@@ -219,7 +219,7 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     // multithread / unroll?
     // omp
     if (size >= 100000) {
-        omp_set_num_threads(8);
+        omp_set_num_threads(16);
     }
     #pragma omp parallel for if (size >= 100000)
     for (int i = 0; i < size; i++) {
@@ -243,7 +243,7 @@ int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     // multithread / unroll?
     // omp
     if (size >= 100000) {
-        omp_set_num_threads(8);
+        omp_set_num_threads(16);
     }
     #pragma omp parallel for if (size >= 100000)
     for (int i = 0; i < size; i++) {
@@ -314,7 +314,7 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
         }
         free(tranData);
         return 0;
-    } else { // size .= 200
+    } else { // size >= 200
         // allocate the transpose data
         double *tranData  = malloc(size * size * sizeof(double));
         if (tranData == NULL) {
@@ -499,6 +499,9 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
     int size = mat->rows * mat->cols * sizeof(double);
     if (pow == 0) {
         int result_size = result->rows * result->cols;
+        if (result_size >= 100000) {
+            omp_set_num_threads(16);
+        }
         #pragma omp parallel for if (result_size >= 100000)
         for (int i = 0; i < size; ++i) {
             if (i / result->cols == i % result->cols) {
@@ -521,6 +524,9 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
     }
     memcpy(temp1->data, mat->data, size);
     int result_size = result->rows * result->cols;
+    if (result_size >= 100000) {
+        omp_set_num_threads(16);
+    }
     #pragma omp parallel for if (result_size >= 100000)
     for (int i = 0; i < size; ++i) {
         if (i / result->cols == i % result->cols) {
@@ -616,7 +622,7 @@ int neg_matrix(matrix *result, matrix *mat) {
     int size = mHeight * mWidth;
     __m256d zeros = _mm256_set1_pd(0);
     if (size >= 100000) {
-        omp_set_num_threads(8);
+        omp_set_num_threads(16);
     }
     #pragma omp parallel for if (size >= 100000)
     for (int i = 0; i < size/16 * 16; i += 16) {
@@ -685,4 +691,3 @@ int abs_matrix(matrix *result, matrix *mat) {
     }
     return 0; // success
 }
-
