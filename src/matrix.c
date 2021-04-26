@@ -73,7 +73,7 @@ int allocate_matrix(matrix **mat, int rows, int cols) {
     }
     // initialize data array entries to 0.0
     int mat_size = mat->rows * mat->cols;
-    mat->data = calloc(mat_size, sizeof(double);
+    mat->data = calloc(mat_size, sizeof(double));
     // set mallocatrix values as relevant
     mallocatrix->rows = rows;
     mallocatrix->cols = cols;
