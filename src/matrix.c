@@ -264,7 +264,7 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     // if matrix multiplication is small, use naive method
     if (result->rows * result->cols <= 100000) {
         // naive implementation of mul_matrix (use transpose?)
-        #pragma omp parallel for if (size >= 250)
+        #pragma omp parallel for if (result->rows * result->cols >= 1000)
         for (int i = 0; i < result->rows; ++i) {
             for (int j = 0; j < result->cols; ++j) {
                 double curr_sum = 0.0;
