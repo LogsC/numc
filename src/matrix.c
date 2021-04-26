@@ -187,20 +187,21 @@ void set(matrix *mat, int row, int col, double val) {
 void fill_matrix(matrix *mat, double val) {
     /* TODO: YOUR CODE HERE */
     // multithread / unroll?
+    double** data = *(mat->data);
     __m256d vec = _mm256_set1_pd(val);
-    int size = mat->rows * mat-> cols;
-    if (size >= 100000) {
-        omp_set_num_threads(16);
+    int dims = mat->rows * mat-> cols;
+    if (dims >= 100000) {
+        omp_set_num_threads(8);
     }
-    #pragma omp parallel for if (size >= 100000)
-    for (int i = 0; i < size / 16 * 16; i += 16) {
-        _mm256_storeu_pd((mat->data + i), vec);
-        _mm256_storeu_pd((mat->data + i + 4), vec);
-        _mm256_storeu_pd((mat->data + i + 8), vec);
-        _mm256_storeu_pd((mat->data + i + 12), vec);
+    #pragma omp parallel for if (dims >= 100000)
+    for (int i = 0; i < dims/16 * 16; i += 16) {
+        _mm256_storeu_pd((data + i), vec);
+        _mm256_storeu_pd((data + i + 4), vec);
+        _mm256_storeu_pd((data + i + 8), vec);
+        _mm256_storeu_pd((data + i + 12), vec);
     }
-     for (int i = size / 16 * 16; i < size; i++) {
-        mat->data[i] = val;
+    for (int i = dims/16 * 16; i < dims; i++) {
+        data[i] = val;
     }
 }
 
@@ -266,7 +267,11 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     // create separate case for matrix multiplcation under a certain size?
     int size = result->rows;
     // fill result with 0s
-    fill_matrix(result, 0.0);
+    int res_size = mat->rows * mat->cols;
+    result->data = calloc(res_size, sizeof(double);
+    if (!result->data) {
+        return -1;
+    }
     if (size < 32) { // simple naive
         #pragma omp parallel for if (size >= 16)
         for (int i = 0; i < size; i++) {
